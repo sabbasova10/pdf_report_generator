@@ -10,6 +10,8 @@ const PORT = process.env.PORT;
 app.use(express.json());
 
 db.exec("DROP TABLE IF EXISTS books");
+db.exec("DROP TABLE IF EXISTS reports");
+
 db.exec(`
     CREATE TABLE books(
         id INTEGER PRIMARY KEY,
@@ -17,6 +19,13 @@ db.exec(`
         price REAL,
         rating TEXT,
         url TEXT
+    )`);
+
+db.exec(`
+    CREATE TABLE reports(
+        id INTEGER PRIMARY KEY,
+        path TEXT,
+        created_at DATETIME
     )`);
 
 const entries = JSON.parse(fs.readFileSync("./books.json", "utf-8"));
@@ -97,7 +106,7 @@ function createHTML(reportData){
             </head>
             <body>
                 <h3>Total number of books: </h3><p>${reportData.books_total}</p>
-                <h3>Average price: </h3><p>${reportData.average_price}</p>
+                <h3>Average price: </h3><p>${reportData.average_price.toFixed(2)}</p>
 
                 <h3>Top 5 by price</h3>
                 <table>
@@ -139,13 +148,41 @@ function createHTML(reportData){
 }
 
 app.get("/health", async (req, res) => {
+    return res.status(200).json({status: "ok"});
+});
+
+app.post("/reports", async (req, res) => {
     const reportData = getReportData();
     const html = createHTML(reportData);
-
     const pdf = await htmlToPdf(html);
-    fs.writeFileSync("test.pdf", pdf);
 
-    return res.status(200).json({status: "ok", report: reportData});
+    const time = Date.now();
+
+    if(!fs.existsSync("reports")) fs.mkdirSync("reports");
+    const filePath = `reports/${time}.pdf`;
+    fs.writeFileSync(filePath, pdf);
+    const addReport = db.prepare("INSERT INTO reports (path, created_at) VALUES (?, ?)").run(filePath, time);
+
+    return res.status(201).json({id: addReport.lastInsertRowid, file: filePath, message: "Created"});
+});
+
+app.get("/reports/:id", async (req, res) => {
+    
+    const reportID = req.params.id;
+    const file = db.prepare("SELECT * FROM reports WHERE id = (?)").get(reportID);
+
+    if (!file) return res.status(404).json({message: "FileNotFound"});
+    return res.status(200).json({link: file.path});
+});
+
+app.get("/reports/:id/file", async (req, res) => {
+    
+    const reportID = req.params.id;
+    const file = db.prepare("SELECT * FROM reports WHERE id = (?)").get(reportID);
+
+    if (!file) return res.status(404).json({message: "FileNotFound"});
+    return res.sendFile(path.resolve(file.path));
+    
 });
 
 
