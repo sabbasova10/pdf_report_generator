@@ -6,7 +6,7 @@
 
 ![alt text](image-1.png)
 
-By using small requests the main job is done in less period of tim for user.
+By using small requests the main job is done in less period of time for user. Used when there are a lot of data or a lot of users at the same time.
 Using idempotency helps to avoid additional work, email resending, report generstion on the same date, reasking for web pages in db.
 
 
@@ -51,3 +51,39 @@ Connection: keep-alive
 Keep-Alive: timeout=5
 
 {"message":"FileNotFound"}
+
+
+sendFile() option displays binary output in the terminal.
+
+
+# time management  
+time curl -i -X POST http://localhost:8000/reports
+HTTP/1.1 200 OK
+X-Powered-By: Express
+Content-Type: application/json; charset=utf-8
+Content-Length: 81
+ETag: W/"51-ih2zfwvQe4af0B33HRBhv+zlTGA"
+Date: Thu, 27 Aug 2026 20:58:55 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"message":"Already created","file":"reports/2026-08-27.pdf","date":"2026-08-27"}
+real 0m0.016s
+user 0m0.009s
+sys  0m0.006s
+
+
+curl -i -X POST http://localhost:8000/rep
+orts \
+  -H "Content-Type: application/json" \
+  -d '{"force": true}'
+HTTP/1.1 200 OK
+X-Powered-By: Express
+Content-Type: application/json; charset=utf-8
+Content-Length: 73
+ETag: W/"49-p+hWMCEaQDlAiBSo8kmdLBtdvG8"
+Date: Thu, 27 Aug 2026 21:00:30 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
+{"message":"Updated","file":"reports/2026-08-27.pdf","date":"2026-08-27"}

@@ -5,6 +5,7 @@ const fs = require("fs");
 const { DatabaseSync } = require('node:sqlite');
 const db = new DatabaseSync('report.db');
 const { chromium } = require("playwright");
+const path = require("path");
 
 const PORT = process.env.PORT;
 app.use(express.json());
@@ -72,7 +73,6 @@ function getReportData(){
     return reportData;
 
 };
-
 
 function createHTML(reportData){
 
@@ -152,18 +152,30 @@ app.get("/health", async (req, res) => {
 });
 
 app.post("/reports", async (req, res) => {
+
+    const time = new Date().toISOString().replace(":", "-").split('T')[0];
+    const f = db.prepare("SELECT * FROM reports WHERE created_at = (?)").get(time);
+
+    if (f && !req.body?.force) return res.status(200).json({message: "Already created", file: f.path, date: time});    
+    else{
+
     const reportData = getReportData();
     const html = createHTML(reportData);
     const pdf = await htmlToPdf(html);
-
-    const time = Date.now();
-
     if(!fs.existsSync("reports")) fs.mkdirSync("reports");
-    const filePath = `reports/${time}.pdf`;
-    fs.writeFileSync(filePath, pdf);
-    const addReport = db.prepare("INSERT INTO reports (path, created_at) VALUES (?, ?)").run(filePath, time);
 
-    return res.status(201).json({id: addReport.lastInsertRowid, file: filePath, message: "Created"});
+        if(req.body?.force && f){
+            fs.writeFileSync(f.path, pdf);
+            return res.status(200).json({message: "Updated", file: f.path, date: time});
+
+        }else{
+            const filePath = `reports/${time}.pdf`;
+            fs.writeFileSync(filePath, pdf);
+            const addReport = db.prepare("INSERT INTO reports (path, created_at) VALUES (?, ?)").run(filePath, time);
+            return res.status(201).json({id: addReport.lastInsertRowid, file: filePath, message: "Created"});
+        }
+
+    } 
 });
 
 app.get("/reports/:id", async (req, res) => {
