@@ -30,18 +30,28 @@ for (const entry of entries) {
 }
 
 function getReportData(){
-    
 
+    const number = db.prepare("SELECT COUNT(*) AS total FROM books");
+    const averagePrice = db.prepare("SELECT AVG(price) AS avg_price FROM books");
+    const topFive = db.prepare("SELECT * FROM books ORDER BY price DESC LIMIT 5");
+    const ratingGroups = db.prepare("SELECT rating, COUNT(*) AS count FROM books GROUP BY rating");
+
+    const reportData = {
+        books_total: number.get().total,
+        average_price: averagePrice.get().avg_price,
+        top_5: topFive.all(),
+        rating_groups: ratingGroups.all() 
+    };
+
+    return reportData;
 
 };
 
 app.get("/health", (req, res) => {
-    const command = db.prepare("SELECT COUNT(*) books");
-    const number = command.run();
-    return res.status(200).json({status: "ok", books: number});
+    const reportData = getReportData();
+    return res.status(200).json({status: "ok", report: reportData});
 });
 
-getReportData();
 
 app.listen(PORT, (err) => {
     if (err){
